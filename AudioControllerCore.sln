@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.421
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AudioCoreApi", "AudioCoreApi\AudioCoreApi.csproj", "{45D27412-300B-4087-A9B2-4CFBCB5D8770}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioCoreSerial", "AudioCoreSerial\AudioCoreSerial.csproj", "{7040C60C-91EB-41D1-9914-9B5A1CFA9D5A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45D27412-300B-4087-A9B2-4CFBCB5D8770}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45D27412-300B-4087-A9B2-4CFBCB5D8770}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45D27412-300B-4087-A9B2-4CFBCB5D8770}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45D27412-300B-4087-A9B2-4CFBCB5D8770}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7040C60C-91EB-41D1-9914-9B5A1CFA9D5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7040C60C-91EB-41D1-9914-9B5A1CFA9D5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7040C60C-91EB-41D1-9914-9B5A1CFA9D5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7040C60C-91EB-41D1-9914-9B5A1CFA9D5A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5F060859-F517-4A28-8A06-9781897F930B}
+	EndGlobalSection
+EndGlobal
