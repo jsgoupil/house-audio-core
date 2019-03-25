@@ -19,7 +19,7 @@ Change the permission for the server file
 chmod +x myWebApp
 
 Run the web server
-./myWebApp --server.urls http://0.0.0.0:5001
+./AudioCoreApi --server.urls http://0.0.0.0:5001
 
 Serial Port is on /dev/ttyUSB0.
 
@@ -27,3 +27,6 @@ If the permission is denied.
 Add the user to dialout  so it can talk to the ttyUSB0
 sudo usermod -a -G dialout $USER
 Restart console.
+
+Change /etc/rc.conf to add the service serial-server
+Drop serial-server in /etc/rc.d
