@@ -1,14 +1,28 @@
 ﻿using AudioCoreSerial.I;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace AudioCoreSerial.C
 {
     /// <summary>
     /// Controls the AE6MC.
+    /// This controller will always reply "Error 1: No ~ detected" after a successful command.
+    /// In case the command is unsucessful, it will reply "Error 2: Unrecognized Command".
+    /// If you enter the volume higher than 88, it will RESET the amplifier.
     /// </summary>
     public class ControlAE6MC : IAmplifier
     {
+        private const string NORMAL_LINE = "Error 1: No ~ detected";
+        private const int MAX_VOLUME = 87;
+
+        /// <summary>
+        /// The hex like is used because the amplifier return something similar to HEX but shows the value in ASCII.
+        /// For instance, 3= signifies 60 in decimal.
+        /// </summary>
+        private static readonly char[] HEX_LIKE = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?' };
+
         /// <summary>
         /// Number of available zones.
         /// </summary>
@@ -22,15 +36,21 @@ namespace AudioCoreSerial.C
         /// <summary>
         /// Communication protocol
         /// </summary>
-        private ICommunication communication;
+        private readonly ICommunication communication;
+
+        private readonly ILogger logger;
 
         /// <summary>
         /// Control Constructor
         /// </summary>
         /// <param name="communication">Communication class</param>
-        public ControlAE6MC(ICommunication communication)
+        public ControlAE6MC(
+            ICommunication communication,
+            ILogger<ControlAE6MC> logger
+        )
         {
             this.communication = communication;
+            this.logger = logger;
         }
 
         /// <summary>
@@ -39,8 +59,9 @@ namespace AudioCoreSerial.C
         /// <returns>Amplifier version</returns>
         public async Task<string> GetVersionAsync()
         {
+            logger.LogTrace("Sending {MESSAGE}", "(vr?)");
             await communication.WriteAsync("(vr?)");
-            return await communication.ReadAsync();
+            return await communication.ReadUntilTimeoutAsync();
         }
 
         /// <summary>
@@ -49,7 +70,9 @@ namespace AudioCoreSerial.C
         /// <returns>Async</returns>
         public async Task ResetAsync()
         {
+            logger.LogTrace("Sending {MESSAGE}", "(rx)");
             await communication.WriteAsync("(rx)");
+            await WaitForReply();
         }
 
         /// <summary>
@@ -61,9 +84,10 @@ namespace AudioCoreSerial.C
         public async Task SetOnStateAsync(int outputId, bool on)
         {
             var index = GetIndexFromId(outputId);
-            await (on ?
-                communication.WriteAsync("(" + index + "on)") :
-                communication.WriteAsync("(" + index + "of)"));
+            var message = on ? "(" + index + "on)" : "(" + index + "of)";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
@@ -75,9 +99,10 @@ namespace AudioCoreSerial.C
         public async Task SetMuteStateAsync(int outputId, bool on)
         {
             var index = GetIndexFromId(outputId);
-            await (on ?
-                communication.WriteAsync("(" + index + "mu)") :
-                communication.WriteAsync("(" + index + "um)"));
+            var message = on ? "(" + index + "mu)" : "(" + index + "um)";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
@@ -87,9 +112,10 @@ namespace AudioCoreSerial.C
         /// <returns>Async</returns>
         public async Task MuteAll(bool mute)
         {
-            await (mute ?
-                communication.WriteAsync("(amu)") :
-                communication.WriteAsync("(aum)"));
+            var message = mute ? "(amu)" : "(aum)";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
@@ -100,15 +126,31 @@ namespace AudioCoreSerial.C
         public async Task<int> GetVolumeAsync(int outputId)
         {
             var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "vl?)");
-            string result = await communication.ReadAsync();
-            int finalResult;
-            if (!int.TryParse(result, out finalResult))
+            var message = "(" + index + "vl?)";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await Task.Delay(100);
+            var result = await communication.ReadAsync();
+            logger.LogTrace("Receiving {MESSAGE}", result);
+
+            // The value return is HEX like.
+            // But it is immediately followed by Error 1: No ~ detected
+            // Lowest number is 00 to send in.
+
+            if (result.EndsWith(NORMAL_LINE))
             {
-                return -1;
+                var volume = result.Substring(0, 2);
+                var volumePosition0 = Array.IndexOf(HEX_LIKE, volume[0]);
+                var volumePosition1 = Array.IndexOf(HEX_LIKE, volume[1]);
+                if (volumePosition0 >= 0 && volumePosition1 >= 1)
+                {
+                    var decValue = volumePosition0 * 16 + volumePosition1;
+
+                    return decValue * 100 / MAX_VOLUME;
+                }
             }
 
-            return finalResult * 100 / 87;
+            return -1;
         }
 
         /// <summary>
@@ -119,45 +161,52 @@ namespace AudioCoreSerial.C
         /// <returns>Async</returns>
         public async Task SetVolumeAsync(int outputId, int value)
         {
-            // Our value goes from 0 to 87
+            // Our value goes from 0 to MAX_VOLUME
             var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "vl" + (value * 87 / 100).ToString("D2") + ")");
+            var message = "(" + index + "vl" + (value * MAX_VOLUME / 100).ToString("D2") + ")";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
         /// Gets the bass for the zone.
         /// </summary>
         /// <param name="outputId">Zone</param>
-        /// <returns>Bass from 0 to 100</returns>
-        public async Task<int> GetBassAsync(int outputId)
+        /// <returns>Bass from 0 to 15</returns>
+        public Task<int> GetBassAsync(int outputId)
         {
-            var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "b?)");
-            return Convert.ToInt32(await communication.ReadAsync(), 16);
+            throw new NotImplementedException("This amplifier cannot query the bass.");
         }
 
         /// <summary>
         /// Sets the bass for the zone.
         /// </summary>
         /// <param name="outputId">Zone</param>
-        /// <param name="value">Bass from 0 to 100</param>
+        /// <param name="value">Bass from 0 to 15</param>
         /// <returns>Async</returns>
         public async Task SetBassAsync(int outputId, int value)
         {
+            if (value < 0 || value > 15)
+            {
+                throw new ArgumentException(nameof(value), "The value must be between 0 and 15");
+            }
+
             var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "b" + value.ToString("X") + ")");
+            var message = "(" + index + "b" + value.ToString("x") + ")";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
         /// Gets the treble for the zone.
         /// </summary>
         /// <param name="outputId">Zone</param>
-        /// <returns>Treble from 0 to 100</returns>
-        public async Task<int> GetTrebleAsync(int outputId)
+        /// <returns>Treble from 0 to 15</returns>
+        public Task<int> GetTrebleAsync(int outputId)
         {
-            var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "t?)");
-            return Convert.ToInt32(await communication.ReadAsync(), 16);
+            throw new NotImplementedException("This amplifier cannot query the treble.");
         }
 
         /// <summary>
@@ -168,8 +217,16 @@ namespace AudioCoreSerial.C
         /// <returns>Async</returns>
         public async Task SetTrebleAsync(int outputId, int value)
         {
+            if (value < 0 || value > 15)
+            {
+                throw new ArgumentException(nameof(value), "The value must be between 0 and 15");
+            }
+
             var index = GetIndexFromId(outputId);
-            await communication.WriteAsync("(" + index + "t" + value.ToString("X") + ")");
+            var message = "(" + index + "t" + value.ToString("x") + ")";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         /// <summary>
@@ -182,7 +239,10 @@ namespace AudioCoreSerial.C
         {
             var indexOutput = GetIndexFromId(outputId);
             var indexInput = GetIndexFromId(inputId);
-            await communication.WriteAsync("(" + indexOutput + "sl" + indexInput + ")");
+            var message = "(" + indexOutput + "sl" + indexInput + ")";
+            logger.LogTrace("Sending {MESSAGE}", message);
+            await communication.WriteAsync(message);
+            await WaitForReply();
         }
 
         public int GetOutputAmount()
@@ -208,6 +268,22 @@ namespace AudioCoreSerial.C
         private int GetIndexFromId(int id)
         {
             return id + 1;
+        }
+
+        private Task WaitForReply()
+        {
+            /* We do nothing! */
+            return Task.CompletedTask;
+            /*
+            try
+            {
+                var result = await communication.ReadAsync(); // Ignore the next line.
+                logger.LogTrace("Received {MESSAGE}", result);
+            }
+            catch (TimeoutException)
+            {
+                logger.LogWarning("We timed out readining.");
+            }*/
         }
     }
 }

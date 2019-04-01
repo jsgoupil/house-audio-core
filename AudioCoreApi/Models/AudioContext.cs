@@ -12,9 +12,9 @@ namespace AudioCoreApi.Models
         public DbSet<Template> Templates { get; set; }
         public DbSet<TemplateEntry> TemplateEntries { get; set; }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlite("Data Source=audio.db");
-        }
+        public AudioContext(
+            DbContextOptions contextOptions
+        ) : base(contextOptions)
+        { }
     }
 }

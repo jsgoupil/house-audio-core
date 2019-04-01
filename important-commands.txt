@@ -12,6 +12,10 @@ $ ./build.sh
 Put the export command in .bashrc
 export LD_LIBRARY_PATH=/home/bitcoin/serialportstream/dll/serialunix/bin/usr/local/lib:$LD_LIBRARY_PATH
 
+The export has to run on sudo as well if you get this error:
+Unable to load shared library 'libnserial.so.1' or one of its dependencies.
+ 
+
 Publish for dotnet linux
 dotnet publish --self-contained --runtime linux-arm
 

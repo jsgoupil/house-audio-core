@@ -7,6 +7,8 @@ namespace AudioCoreSerial.I
     /// </summary>
     public interface ICommunication
     {
+        string PortName { get; }
+
         /// <summary>
         /// Write data.
         /// </summary>
@@ -19,5 +21,11 @@ namespace AudioCoreSerial.I
         /// </summary>
         /// <returns>Data read asynchronously.</returns>
         Task<string> ReadAsync();
+
+        /// <summary>
+        /// Read data, until the RS232 times out.
+        /// </summary>
+        /// <returns>Data read asynchronously.</returns>
+        Task<string> ReadUntilTimeoutAsync();
     }
 }

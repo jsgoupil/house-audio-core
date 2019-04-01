@@ -2,6 +2,7 @@
 using RJCP.IO.Ports;
 using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace AudioCoreSerial.C
@@ -23,6 +24,8 @@ namespace AudioCoreSerial.C
         /// </summary>
         private readonly int writeDelay;
 
+        public string PortName { get; private set; }
+
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -32,6 +35,7 @@ namespace AudioCoreSerial.C
             int writeDelay
         )
         {
+            PortName = portName;
             serialPort = new SerialPortStream(portName)
             {
                 BaudRate = 19200,
@@ -59,6 +63,10 @@ namespace AudioCoreSerial.C
                         serialPort.Open();
                     }
                     catch (IOException ex)
+                    {
+                        throw new SerialPortException("Can't open the connection on serial port", ex);
+                    }
+                    catch (InvalidOperationException ex)
                     {
                         throw new SerialPortException("Can't open the connection on serial port", ex);
                     }
@@ -105,6 +113,33 @@ namespace AudioCoreSerial.C
             {
                 return Task.FromResult(serialPort.ReadLine());
             }
+        }
+
+        /// <summary>
+        /// Read data, until the RS232 times out.
+        /// </summary>
+        /// <returns>Data read asynchronously.</returns>
+        public Task<string> ReadUntilTimeoutAsync()
+        {
+            var str = new StringBuilder();
+
+            Connect();
+            lock (obj)
+            {
+                do
+                {
+                    try
+                    {
+                        str.AppendLine(serialPort.ReadLine());
+                    }
+                    catch (TimeoutException)
+                    {
+                        break;
+                    }
+                } while (true);
+            }
+
+            return Task.FromResult(str.ToString());
         }
 
         /// <summary>

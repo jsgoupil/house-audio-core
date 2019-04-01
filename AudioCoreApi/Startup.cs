@@ -1,5 +1,6 @@
 ﻿using AudioCoreApi.Filters;
 using AudioCoreApi.Models;
+using AudioCoreApi.Services;
 using AudioCoreSerial;
 using AudioCoreSerial.C;
 using AudioCoreSerial.I;
@@ -9,21 +10,26 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System;
 using System.IO;
 
 namespace AudioControllerCore
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IHostingEnvironment hostingEnvironment)
         {
             Configuration = configuration;
+            HostingEnvironment = hostingEnvironment;
         }
 
         public IConfiguration Configuration { get; }
+        public IHostingEnvironment HostingEnvironment { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -36,16 +42,24 @@ namespace AudioControllerCore
                 return new RS232(audioOptions.COMPort, audioOptions.WriteDelay);
             });
             services.AddScoped<IAmplifier, ControlAE6MC>();
+            services.AddScoped<ResetService>();
 
             services.AddMvc(config =>
             {
                 config.Filters.Add(typeof(ExceptionFilter));
             }).SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
-            services.AddDbContext<AudioContext>();
+            services.AddDbContext<AudioContext>(
+                options => {
+                    var builder = new SqliteConnectionStringBuilder(Configuration.GetConnectionString("DefaultConnection"));
+                    builder.DataSource = Path.Combine(HostingEnvironment.ContentRootPath, builder.DataSource);
+                    options.UseSqlite(builder.ToString());
 
-            var context = new AudioContext();
-            context.Database.EnsureCreated();
+                    new AudioContext(options.Options).Database.EnsureCreated();
+                },
+                ServiceLifetime.Scoped);
+
+            services.AddHostedService<AmplifierCheckerService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

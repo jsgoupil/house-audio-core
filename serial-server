@@ -4,7 +4,7 @@ SSD=/sbin/start-stop-daemon
 PROG=/home/bitcoin/serial-server/AudioCoreApi
 PID=/var/run/serial-server.pid
 CWD=/home/bitcoin/serial-server
-OPTS="--server.urls http://0.0.0.0:5001"
+OPTS="--server.urls http://0.0.0.0:5001 --contentRoot /home/bitcoin/serial-server"
 
 case $1 in
 start)

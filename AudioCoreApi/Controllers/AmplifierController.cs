@@ -1,4 +1,5 @@
 ﻿using AudioCoreApi.Models;
+using AudioCoreApi.Services;
 using AudioCoreSerial.I;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,15 +12,35 @@ namespace AudioControllerCore.Controllers
     public class AmplifierController : ControllerBase
     {
         private readonly IAmplifier amplifier;
+        private readonly ICommunication communication;
+        private readonly ResetService resetService;
         private readonly AudioContext dbContext;
 
         public AmplifierController(
             IAmplifier amplifier,
+            ICommunication communication,
+            ResetService resetService,
             AudioContext dbContext
         )
         {
             this.amplifier = amplifier;
+            this.communication = communication;
+            this.resetService = resetService;
             this.dbContext = dbContext;
+        }
+
+        /// <summary>
+        /// Gets the version of the amplifier.
+        /// </summary>
+        /// <returns>Version</returns>
+        [HttpGet]
+        [Route("settings")]
+        public IActionResult Settings()
+        {
+            return Ok(new
+            {
+                communication.PortName 
+            });
         }
 
         /// <summary>
@@ -41,20 +62,7 @@ namespace AudioControllerCore.Controllers
         [Route("reset")]
         public async Task<IActionResult> Reset()
         {
-            var outputs = await dbContext.Outputs.ToListAsync();
-            foreach (var output in outputs)
-            {
-                await amplifier.SetBassAsync(output.Id, output.Bass);
-                await amplifier.SetTrebleAsync(output.Id, output.Treble);
-                await amplifier.SetVolumeAsync(output.Id, output.Volume);
-                await amplifier.SetOnStateAsync(output.Id, output.On);
-
-                if (output.LinkInput.HasValue)
-                {
-                    await amplifier.LinkAsync(output.LinkInput.Value, output.Id);
-                }
-            }
-
+            await resetService.ResetAsync();
             return NoContent();
         }
     }
