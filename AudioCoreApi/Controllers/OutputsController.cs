@@ -356,6 +356,19 @@ namespace AudioCoreApi.Controllers
         }
 
         /// <summary>
+        /// Bring the volume up. For LUUP.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("volumeup")] // LUUP has trouble to do POST
+        public Task<IActionResult> VolumeUp()
+        {
+            return VolumeUp(new WebApiInput<int>
+            {
+                Input = 10
+            });
+        }
+
+        /// <summary>
         /// Bring the volume down.
         /// </summary>
         /// <param name="input"></param>
@@ -373,6 +386,19 @@ namespace AudioCoreApi.Controllers
             await dbContext.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Bring the volume down. For LUUP.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("volumedown")] // LUUP has trouble to do POST
+        public Task<IActionResult> VolumeDown()
+        {
+            return VolumeDown(new WebApiInput<int>
+            {
+                Input = 10
+            });
         }
 
         /// <summary>

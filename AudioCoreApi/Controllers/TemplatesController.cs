@@ -135,6 +135,7 @@ namespace AudioCoreApi.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        [HttpGet("{id}/apply")] // LUUP has trouble to do POST
         [HttpPost("{id}/apply")]
         public async Task<IActionResult> ApplyTemplate(int id)
         {
@@ -195,7 +196,7 @@ namespace AudioCoreApi.Controllers
                 {
                     if (!output.LinkInput.HasValue || output.LinkInput != entry.LinkWithInputId.Value)
                     {
-                        await amplifier.SetVolumeAsync(entry.OutputId, entry.LinkWithInputId.Value);
+                        await amplifier.LinkAsync(entry.LinkWithInputId.Value, entry.OutputId);
                         output.LinkInput = entry.LinkWithInputId.Value;
                     }
                 }

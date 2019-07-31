@@ -1,4 +1,5 @@
 ﻿using AudioCoreSerial.I;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,24 +13,24 @@ namespace AudioCoreApi.Services
     public class AmplifierCheckerService : IHostedService, IDisposable
     {
         private readonly ILogger logger;
+        private readonly IServiceScopeFactory scopeFactory;
         private readonly IAmplifier amplifier;
         private readonly ICommunication communication;
-        private readonly ResetService resetService;
         private Timer timer;
 
         private bool isAlive = true; // We say we start as alive.
 
         public AmplifierCheckerService(
             ILogger<AmplifierCheckerService> logger,
+            IServiceScopeFactory scopeFactory,
             IAmplifier amplifier,
-            ICommunication communication,
-            ResetService resetService
+            ICommunication communication
         )
         {
             this.logger = logger;
+            this.scopeFactory = scopeFactory;
             this.amplifier = amplifier;
             this.communication = communication;
-            this.resetService = resetService;
         }
 
         public void Dispose()
@@ -65,16 +66,21 @@ namespace AudioCoreApi.Services
                 logger.LogInformation("The amplifier is {RESPONDING}", isAmplifierResponding);
                 if (!isAlive && isAmplifierResponding)
                 {
-                    // We send a reset because we just came back.
-                    try
+                    using (var scope = scopeFactory.CreateScope())
                     {
-                        logger.LogInformation("Sending RESET to the amplifier");
-                        await resetService.ResetAsync();
-                        isAlive = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Sending reset did not work");
+                        var resetService = scope.ServiceProvider.GetRequiredService<ResetService>();
+
+                        // We send a reset because we just came back.
+                        try
+                        {
+                            logger.LogInformation("Sending RESET to the amplifier");
+                            await resetService.ResetAsync();
+                            isAlive = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex, "Sending reset did not work");
+                        }
                     }
                 }
                 else if (isAlive && !isAmplifierResponding)

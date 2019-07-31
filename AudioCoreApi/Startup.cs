@@ -41,7 +41,7 @@ namespace AudioControllerCore
                 var audioOptions = kernel.GetRequiredService<IOptionsMonitor<AudioOptions>>().CurrentValue;
                 return new RS232(audioOptions.COMPort, audioOptions.WriteDelay);
             });
-            services.AddScoped<IAmplifier, ControlAE6MC>();
+            services.AddSingleton<IAmplifier, ControlAE6MC>();
             services.AddScoped<ResetService>();
 
             services.AddMvc(config =>
