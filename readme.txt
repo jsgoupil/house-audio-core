@@ -14,7 +14,10 @@ export LD_LIBRARY_PATH=/home/bitcoin/serialportstream/dll/serialunix/bin/usr/loc
 
 The export has to run on sudo as well if you get this error:
 Unable to load shared library 'libnserial.so.1' or one of its dependencies.
- 
+
+
+See all running processes
+ps aux
 
 Publish for dotnet linux
 dotnet publish --self-contained --runtime linux-arm
@@ -34,3 +37,9 @@ Restart console.
 
 Change /etc/rc.conf to add the service serial-server
 Drop serial-server in /etc/rc.d
+
+
+
+Run with content
+/home/bitcoin/serial-server/AudioCoreApi --server.urls http://0.0.0.0:5001 --contentRoot /home/bitcoin/serial-server/
+
